@@ -2,6 +2,53 @@
 #include "IntelNoise.h"
 #include <float.h> // FLT_MAX
 
+// For writing to Unity console
+#include <string>
+using namespace std;
+
+#if USING_UNITY
+// Allow writing to the Unity debug console from inside DLL land.
+extern "C"
+{
+	void(_stdcall*debugLog)(const char*) = NULL;
+
+	__declspec(dllexport) void LinkDebug(void(_stdcall*d)(const char *))
+	{
+		debugLog = d;
+	}
+}
+
+void DebugLog(const char* str)
+{
+	//#   if _DEBUG
+	if (debugLog) debugLog(str);
+	//#   endif
+}
+
+
+void DebugLog(string str)
+{
+	//#   if _DEBUG
+	if (debugLog) debugLog(str.c_str());
+	//#   endif
+}
+
+using namespace Vectormath::Aos;
+string to_string(Vector3 v)
+{
+	string s(to_string(v.getX()) + "," + to_string(v.getY()) + "," + to_string(v.getZ()));
+	return s;
+}
+#else
+// do nothing
+void DebugLog(char *str)
+{
+	return;
+}
+
+//TODO def all the functions above to prevent compile errors when not using Unity / cleanup
+#endif
+
 //-------------------------------------------------------------------------------------------------------------
 namespace // unnamed to hide implementation functions & separate them from API code
 {
@@ -223,7 +270,8 @@ namespace IntelCurlNoise
 			curl = ComputeCurlWithoutObstacles(p);
 		}
 		else
-		{
+		{			
+			//DebugLog("Obstacle neat particle at " + to_string(p) + ". dist = " + to_string(obstacleDistance));
 			curl = ComputeCurlWithObstacles(p, pColliders, length);
 		}
 

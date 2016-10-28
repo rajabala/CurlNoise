@@ -58,7 +58,7 @@ class Vector3
     float mX;
     float mY;
     float mZ;
-#ifndef __GNUC__
+#ifdef __GNUC__
     float d;
 #endif
 
