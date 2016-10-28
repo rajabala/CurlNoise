@@ -49,8 +49,8 @@ namespace IntelCurlNoise
 	};
 
 	// API for visual effect system to use
-	extern Vector3 ComputeCurl(Vector3 wsPos, const Volume *pColliders, unsigned int length);
-	extern Vector3 ComputeCurl(Vector3 wsPos);
+	Vector3 ComputeCurl(Vector3 wsPos, const Volume *pColliders, unsigned int length);
+	Vector3 ComputeCurlWithoutObstacles(Vector3 wsPos);
 
 #if USING_UNITY
 	extern "C"
