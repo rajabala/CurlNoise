@@ -1,7 +1,6 @@
 #include "IntelCurl.h"
 #include "IntelNoise.h"
-#include <math.h>
-#include <stdlib.h>
+#include <float.h> // FLT_MAX
 
 //-------------------------------------------------------------------------------------------------------------
 namespace // unnamed to hide implementation functions & separate them from API code
@@ -115,14 +114,14 @@ namespace // unnamed to hide implementation functions & separate them from API c
 	// helpers
 	Vector3 abs(const Vector3& v)
 	{
-		return Vector3(fabs(v.getX()), fabs(v.getY()), fabs(v.getZ()));
+		return Vector3(fabsf(v.getX()), fabsf(v.getY()), fabsf(v.getZ()));
 	}
 
 	Vector3 max(const Vector3& v1, const Vector3& v2)
 	{
-		return Vector3(fmax(v1.getX(), v2.getX()),
-			fmax(v1.getY(), v2.getY()),
-			fmax(v1.getZ(), v2.getZ())
+		return Vector3(fmaxf(v1.getX(), v2.getX()),
+			fmaxf(v1.getY(), v2.getY()),
+			fmaxf(v1.getZ(), v2.getZ())
 			);
 	}
 
@@ -139,8 +138,8 @@ namespace // unnamed to hide implementation functions & separate them from API c
 	static float sdBox(Vector3 p, Vector3 b)
 	{
 		Vector3 d = abs(p) - b;
-		float dmax = fmax(d.getX(), fmax(d.getY(), d.getZ()));
-		return fmin(dmax, 0.f) + length(max(d, Vector3(0.f, 0.f, 0.f)));
+		float dmax = fmaxf(d.getX(), fmaxf(d.getY(), d.getZ()));
+		return fminf(dmax, 0.f) + length(max(d, Vector3(0.f, 0.f, 0.f)));
 	}
 
 
@@ -153,10 +152,10 @@ namespace // unnamed to hide implementation functions & separate them from API c
 		Vector3 pXZ = Vector3(p.getX(), 0.f, p.getZ()); // todo: replace with Vec2
 
 		float d1 = length(pXZ) - r; // xz
-		float d2 = fabs(p.getY()) - h*0.5f; // y
+		float d2 = fabsf(p.getY()) - h*0.5f; // y
 
-		float d = fmin(fmax(d1, d2), 0.f);
-		float l = length(Vector3(fmax(d1, 0.f), fmax(d2, 0.f), 0.f));
+		float d = fminf(fmaxf(d1, d2), 0.f);
+		float l = length(Vector3(fmaxf(d1, 0.f), fmaxf(d2, 0.f), 0.f));
 
 		return d + l;
 	}	

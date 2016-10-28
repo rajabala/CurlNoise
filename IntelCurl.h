@@ -1,8 +1,6 @@
 #pragma once
 
 #include "vmath.hpp" // PORTME: vmath can be replaced with IG's internal math equivalents
-#include <vector> 	 // PORTME: replace with array / non-STL based implementation if need be
-#include <memory> 	 // PORTME: replace with non-STL unique_ptr implementation if need be
 #define USING_UNITY 1
 
 #if USING_UNITY
