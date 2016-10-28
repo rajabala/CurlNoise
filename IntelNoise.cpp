@@ -1,5 +1,4 @@
 #include "IntelNoise.h"
-#include <algorithm> // std::copy
 
 using namespace IntelCurlNoise;
 
@@ -47,7 +46,7 @@ static const int s_Hash[] =
 
 static const Vector3 s_Gradients3D[]  =
 {
-	// Center of cube to center of each edge
+	// center of cube to center of each of the 12 edges of a cube
 	Vector3(1.0f, 1.0f, 0.0f),
 	Vector3(-1.0f, 1.0f, 0.0f),
 	Vector3(1.0f,-1.0f, 0.0f),
@@ -69,8 +68,10 @@ static const Vector3 s_Gradients3D[]  =
 };
 
 
-// Returns noise value in the range [-1f, 1f] and its derivative (change wrt x, y & z)
-// for a 3D position and frequency
+//-----------------------------------------------------------------------------------------------
+// The PerlinNoise3 implementation calculates a noise value in the range [-1f, 1f] given a 3D position & frequency.
+// It also calculates the analytical derivative (change wrt x, y & z) which can be used to quickly calculate the curl,
+// when the potential field doesn't need to be modified.
 NoiseSample 
 PerlinNoise3::EvaluateNoise(const Vector3& point, float frequency)
 {
@@ -97,6 +98,8 @@ PerlinNoise3::EvaluateNoise(const Vector3& point, float frequency)
 	int h10 = s_Hash[h1 + iy0];
 	int h01 = s_Hash[h0 + iy1];
 	int h11 = s_Hash[h1 + iy1];
+	
+	// gradients at each of the 8 lattice points
 	Vector3 g000 = s_Gradients3D[s_Hash[h00 + iz0] & s_kGradientIndexMask];
 	Vector3 g100 = s_Gradients3D[s_Hash[h10 + iz0] & s_kGradientIndexMask];
 	Vector3 g010 = s_Gradients3D[s_Hash[h01 + iz0] & s_kGradientIndexMask];
@@ -155,8 +158,8 @@ PerlinNoise3::EvaluateNoise(const Vector3& point, float frequency)
 	return sample;
 }
 
-
-// Wrapper that adds multiple octaves at noise; defaults to 1 octave 
+//-----------------------------------------------------------------------------------------------
+// Wrapper that sums multiple octaves at noise; defaults to 1 octave 
 NoiseSample 
 PerlinNoise3::Noise(Vector3 point, float frequency, int octaves, float lacunarity, float persistence)
 {

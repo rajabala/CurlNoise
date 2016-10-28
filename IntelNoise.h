@@ -6,9 +6,7 @@ namespace IntelCurlNoise
 	using namespace Vectormath::Aos;
 
 	//-----------------------------------------------------------------------------------------------
-	// The PerlinNoise3 implementation calculates a noise value in the range [-1f, 1f] given a 3D position
-	// It also calculates the analytical derivative (change wrt x, y & z)
-	// This structure encapsulates the return info.
+	// Return structure for noise sampling containing scalar float and 3D derivative
 	struct NoiseSample
 	{
 	public:
@@ -74,6 +72,7 @@ namespace IntelCurlNoise
 		return a;
 	}
 
+	
 	//-----------------------------------------------------------------------------------------------
 	struct PerlinNoise3
 	{
