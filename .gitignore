@@ -29,6 +29,8 @@ ExportedObj/
 *.opensdf
 *.db
 *.opendb
+*.dll
+*.dll.meta
 
 
 # Unity3D generated meta files

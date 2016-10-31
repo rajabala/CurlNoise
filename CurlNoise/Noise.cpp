@@ -1,6 +1,6 @@
-#include "IntelNoise.h"
+#include "Noise.h"
 
-using namespace IntelCurlNoise;
+using namespace CurlNoise;
 
 static const unsigned int s_kHashIndexMask = 255;
 static const unsigned int s_kGradientIndexMask = 15;

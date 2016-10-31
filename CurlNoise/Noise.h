@@ -1,7 +1,7 @@
 #pragma once
 #include "vmath.hpp"
 
-namespace IntelCurlNoise
+namespace CurlNoise
 {
 	using namespace Vectormath::Aos;
 
@@ -104,4 +104,4 @@ namespace IntelCurlNoise
 		}
 	};	
 
-} // namespace IntelCurlNoise
+} // namespace CurlNoise

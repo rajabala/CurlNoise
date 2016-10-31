@@ -1,5 +1,10 @@
-#include "IntelCurl.h"
-#include "IntelNoise.h"
+// This implementation of Curl Noise is based on the following (fantastic) references:
+//R1: http://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph2007-curlnoise.pdf
+//R2: http://prideout.net/blog/?p=63
+//R3: http://catlikecoding.com/unity/tutorials/noise-derivatives/
+
+#include "Curl.h"
+#include "Noise.h"
 #include <float.h> // FLT_MAX
 
 // For writing to Unity console
@@ -41,35 +46,56 @@ string to_string(Vector3 v)
 }
 #else
 // do nothing
-void DebugLog(char *str)
-{
-	return;
-}
+void DebugLog(const char* str) {}
 
-//TODO def all the functions above to prevent compile errors when not using Unity / cleanup
+void DebugLog(string str) {}
+
+using namespace Vectormath::Aos;
+string to_string(Vector3 v) {}
 #endif
 
 //-------------------------------------------------------------------------------------------------------------
 namespace // unnamed to hide implementation functions & separate them from API code
 {
 	using namespace Vectormath::Aos;
-	using IntelCurlNoise::Volume;
-		
-	// Computes world space distance from 'p' (world space) to nearest obstacle primitive
-	float SampleDistance(Vector3 p, const Volume *pColliders, unsigned int length)
+	using CurlNoise::Volume;
+	using CurlNoise::CurlSettings;
+
+	static CurlSettings s_Settings;
+
+	struct DistanceGradient
+	{
+		float	distance;
+		Vector3 gradient; // normal
+	};
+
+	// Computes world space distance from 'p' (world space) to nearest obstacle primitive and returns a hacky approximation
+	// of the normal at that point
+	DistanceGradient SampleObstacleDistanceAndGradientCheap(Vector3 p, const Volume *pColliders, unsigned int length)
 	{
 		float d = FLT_MAX;
-
+		unsigned int cminId = 0;
 		// TODO This is a naive brute force way. We could do a space partitioning approach to
 		// quickly eliminate those obstacles that are farther away
 		for (unsigned int cId = 0; cId < length; cId++)
 		{
 			float dc = pColliders[cId].DistanceToSurface(p);
 			if (dc < d)
+			{
 				d = dc;
+				cminId = cId;
+			}
 		}
 
-		return d;
+		DistanceGradient dg;
+		dg.distance = d;
+
+		if (length > 0)
+			dg.gradient = p - pColliders[cminId].GetWorldPos(); // xform to object space w/o scaling
+		else
+			dg.gradient = Vector3(0.f, 0.f, 0.f);
+
+		return dg;
 	}
 
 
@@ -84,26 +110,21 @@ namespace // unnamed to hide implementation functions & separate them from API c
 
 
 	//-------------------------------------------------------------------------------------------------------------
-	struct DistanceGradient
-	{
-		float	distance;
-		Vector3 gradient;
-	};
-	// Computes world space distance and normal of the nearest obstacle from a world space position 'p'
-	// TODO Uber naive approach taken here to calculate the normal. 
-	// Might be worth having the primitive return an approximate normal based on 
-	// face/curved surface instead of multiple distance field samples.
-	DistanceGradient ComputeDistanceAndGradient(Vector3 p, const Volume *pColliders, unsigned int length)
+	// Computes world space distance to the nearest obstacle from a world space position 'p' and the gradient at that point
+	// This function determines the gradient by moving 'p' and calculating the change in the distance field and is
+	// expensive as a result. 
+	// Use SampleObstacleDistanceAndGradientCheap(..) for a cheaper alternative
+	DistanceGradient ComputeDistanceAndGradientExpensive(Vector3 p, const Volume *pColliders, unsigned int length)
 	{
 		const float e = 0.01f;
 		Vector3 dx(e, 0, 0);
 		Vector3 dy(0, e, 0);
 		Vector3 dz(0, 0, e);
 
-		float d = SampleDistance(p, pColliders, length); // distance of nearest obstacle
-		float dfdx = SampleDistance(p + dx, pColliders, length) - d; // distance change wrt x
-		float dfdy = SampleDistance(p + dy, pColliders, length) - d; // distance change wrt y
-		float dfdz = SampleDistance(p + dz, pColliders, length) - d; // distance change wrt z
+		float d		= SampleObstacleDistanceAndGradientCheap(p, pColliders, length).distance;			// distance of nearest obstacle
+		float dfdx	= SampleObstacleDistanceAndGradientCheap(p + dx, pColliders, length).distance - d;	// distance change wrt x
+		float dfdy	= SampleObstacleDistanceAndGradientCheap(p + dy, pColliders, length).distance - d;	// distance change wrt y
+		float dfdz	= SampleObstacleDistanceAndGradientCheap(p + dz, pColliders, length).distance - d;	// distance change wrt z
 
 		DistanceGradient dg;
 		dg.distance = d;
@@ -134,25 +155,34 @@ namespace // unnamed to hide implementation functions & separate them from API c
 
 
 	//-------------------------------------------------------------------------------------------------------------
-	using IntelCurlNoise::NoiseSample;
-	using IntelCurlNoise::PerlinNoise3;
+	using CurlNoise::NoiseSample;
+	using CurlNoise::PerlinNoise3;
 	// Returns the 3D potential at 'p' in the presence of obstacles
 	Vector3 SamplePotential(Vector3 p, const Volume *pColliders, unsigned int length)
 	{
 		Vector3 psi(0, 0, 0);
-		DistanceGradient dg = ComputeDistanceAndGradient(p, pColliders, length);
+		DistanceGradient dg;
+		
+		if (s_Settings.m_bCheapGradient)
+			dg = SampleObstacleDistanceAndGradientCheap(p, pColliders, length);
+		else
+			dg = ComputeDistanceAndGradientExpensive(p, pColliders, length);
 
 		const auto& obstacleDistance = dg.distance;
 		const auto& normal = dg.gradient;
+
+		// Smoothly ramp down the potential based on distance to the obstacle so that it is 0 at its boundary
 		float alpha = ramp(obstacleDistance);
 
+		// evaluate 3D noise to get the potential field at p
 		NoiseSample ns0 = PerlinNoise3::Noise(p, 1.f, 1, 0.f, 0.f);
 		NoiseSample ns1 = PerlinNoise3::Noise(p, 1.f, 1, 0.f, 0.f);
 		NoiseSample ns2 = PerlinNoise3::Noise(p, 1.f, 1, 0.f, 0.f);
-
 		psi = Vector3(ns0.value, ns1.value, ns2.value); // noise based 3D potential
 
-		Vector3 psi_new = ConstrainedPotential(psi, dg.gradient, alpha); // adjust field based on obstacle presence
+		// modulate the calculated potential to handle the inviscid boundary condition
+		// i.e., v . n = 0 at the boundary (component of velocity along normal is 0)
+		Vector3 psi_new = ConstrainedPotential(psi, normal, alpha);
 
 		return psi_new;
 	}
@@ -211,8 +241,7 @@ namespace // unnamed to hide implementation functions & separate them from API c
 	//-------------------------------------------------------------------------------------------------------------
 	// TODO This function is uber brute force, requiring 12 potential samples for finite differentiation
 	// Each potential sample involves:
-	// (a) 4 calls to the distance function to determine distance and normal
-	//     Might be worth cheaply approximating the latter instead
+	// (a) 1 or 4 calls to determine distance and gradient of the nearest obstacle (based on s_Settings.m_bCheapGradient)	
 	// (b) 3 perlin noise look ups for the 3D noise
 	Vector3 ComputeCurlWithObstacles(Vector3 p, const Volume *pColliders, unsigned int length)
 	{
@@ -222,32 +251,32 @@ namespace // unnamed to hide implementation functions & separate them from API c
 		Vector3 dz(0, 0, e);
 
 		float dfzdy = SamplePotential(p + dy, pColliders, length).getZ() -
-			SamplePotential(p - dy, pColliders, length).getZ();
+					  SamplePotential(p - dy, pColliders, length).getZ();
 
 		float dfydz = SamplePotential(p + dz, pColliders, length).getY() -
-			SamplePotential(p - dz, pColliders, length).getY();
+					  SamplePotential(p - dz, pColliders, length).getY();
 
 		float dfxdz = SamplePotential(p + dz, pColliders, length).getX() -
-			SamplePotential(p - dz, pColliders, length).getX();
+					  SamplePotential(p - dz, pColliders, length).getX();
 
 		float dfzdx = SamplePotential(p + dx, pColliders, length).getZ() -
-			SamplePotential(p - dx, pColliders, length).getZ();
+					  SamplePotential(p - dx, pColliders, length).getZ();
 
 		float dfydx = SamplePotential(p + dx, pColliders, length).getY() -
-			SamplePotential(p - dx, pColliders, length).getY();
+					  SamplePotential(p - dx, pColliders, length).getY();
 
 		float dfxdy = SamplePotential(p + dy, pColliders, length).getX() -
-			SamplePotential(p - dy, pColliders, length).getX();
+					  SamplePotential(p - dy, pColliders, length).getX();
 
 		return Vector3(dfzdy - dfydz, dfxdz - dfzdx, dfydx - dfxdy) / (2 * e);
 	}
 } // unnamed namespace
 
 
-namespace IntelCurlNoise
+namespace CurlNoise
 {
 	//-------------------------------------------------------------------------------------------------------------
-	// IntelCurlNoise API 
+	// CurlNoise API 
 	//-------------------------------------------------------------------------------------------------------------
 	// PerlinNoise3 returns a scalar float given a 3D position in space. 
 	// To generate a potential force field, we need 3 values, so we use hardcoded offsets
@@ -257,12 +286,30 @@ namespace IntelCurlNoise
 
 
 	//-------------------------------------------------------------------------------------------------------------
-	// Computes the curl at 'p' by sampling the potential field generated via 3D noise, while respecting obstacle
-	// boundaries.
+	// Computes the curl at 'p' by sampling the potential field generated via 3D noise.
+	// The perlin noise calculation takes care of calculating the derivatives analytically
+	Vector3 ComputeCurlWithoutObstacles(Vector3 p)
+	{
+		NoiseSample nsX = noiseX(p);
+		NoiseSample nsY = noiseY(p);
+		NoiseSample nsZ = noiseZ(p);
+
+		//curl = (dfzdy - dfydz, dfxdz - dfzdx, dfydx - dfxdy)
+		Vector3 curl = Vector3(nsZ.derivative.getY() - nsY.derivative.getZ(),
+			nsX.derivative.getZ() - nsZ.derivative.getX(),
+			nsY.derivative.getX() - nsX.derivative.getY());
+
+		return curl;
+	}
+
+
+	//-------------------------------------------------------------------------------------------------------------
+	// Computes the curl at 'p' by sampling the potential field generated via 3D noise, while respecting 
+	// obstacle boundaries.
 	Vector3 ComputeCurl(Vector3 p, const Volume *pColliders, unsigned int length)
 	{
-		float obstacleDistance = SampleDistance(p, pColliders, length);
-		float rampD = ramp(obstacleDistance); //TODO: account for what a unit-step in noise dimensions is
+		auto dg = SampleObstacleDistanceAndGradientCheap(p, pColliders, length);
+		float rampD = ramp(dg.distance); //TODO: account for what a unit-step in noise dimensions is
 		Vector3 curl;
 
 		if (rampD >= 1.f) // no need to account for obstacles to modify the potential
@@ -280,26 +327,16 @@ namespace IntelCurlNoise
 
 
 	//-------------------------------------------------------------------------------------------------------------
-	// Computes the curl at 'p' by sampling the potential field generated via 3D noise
-	// The perlin noise calculation takes care of calculating the derivatives analytically
-	Vector3 ComputeCurlWithoutObstacles(Vector3 p)
+	// Set the parameters to control look/cost of noise/curl
+	void SetCurlSettings(const CurlSettings& settings)
 	{
-		NoiseSample nsX = noiseX(p);
-		NoiseSample nsY = noiseY(p);
-		NoiseSample nsZ = noiseZ(p);
-
-		//curl = (dfzdy - dfydz, dfxdz - dfzdx, dfydx - dfxdy)
-		Vector3 curl = Vector3(nsZ.derivative.getY() - nsY.derivative.getZ(),
-			nsX.derivative.getZ() - nsZ.derivative.getX(),
-			nsY.derivative.getX() - nsX.derivative.getY());
-
-		return curl;
+		s_Settings = settings;
 	}
 
 
 #if USING_UNITY
 	//-------------------------------------------------------------------------------------------------------------	
-	using IntelCurlNoise::float3;
+	using CurlNoise::float3;
 	float3 Vector3ToFloat3(const Vector3& v)
 	{
 		float3 f;
@@ -381,6 +418,8 @@ namespace IntelCurlNoise
 	}
 
 
+	// Returns distance of 'p' (which is in world space) from the surface of the collider
+	// Since the transform doesn't account for scaling, the distance returned is in world space units.
 	float Volume::DistanceToSurface(const Vector3& p) const
 	{
 		float d = 0.f;
@@ -404,4 +443,12 @@ namespace IntelCurlNoise
 
 		return d;
 	}	
+
+
+	// Returns the world space position of the collider
+	Vector3 Volume::GetWorldPos() const
+	{
+		Vector4 wsPos = m_WorldToObject.getCol3();
+		return Vector3(-wsPos.getX(), -wsPos.getY(), -wsPos.getZ());
+	}
 }

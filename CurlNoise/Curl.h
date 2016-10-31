@@ -9,7 +9,7 @@
 #define DLLEXPORT 
 #endif
 
-namespace IntelCurlNoise
+namespace CurlNoise
 {
 	using namespace Vectormath::Aos;
 
@@ -39,6 +39,7 @@ namespace IntelCurlNoise
 
 		float DistanceToSurface(const Vector3& wsPos) const;
 		inline void SetWorldToObjectTransform(const Matrix4& m);
+		inline Vector3 GetWorldPos() const;
 
 	protected:
 		eShape m_Shape;
@@ -46,9 +47,15 @@ namespace IntelCurlNoise
 		Matrix4 m_WorldToObject; // inverse of the object to world matrix consisting of only translation and rotation
 	};
 
-	// API for visual effect system to use
-	Vector3 ComputeCurl(Vector3 wsPos, const Volume *pColliders, unsigned int length);
-	Vector3 ComputeCurlWithoutObstacles(Vector3 wsPos);
+
+	struct CurlSettings
+	{
+		bool			m_bCheapGradient = false;
+		float			m_Frequency = 1.f;
+		unsigned int	m_NumOctaves = 1;
+		float			m_Lacunarity = 0.f;
+		float			m_Persistence = 0.f;		
+	};
 
 #if USING_UNITY
 	extern "C"
@@ -63,6 +70,15 @@ namespace IntelCurlNoise
 		DLLEXPORT float3 ComputeCurlNoBoundaries(Vector3 wsPos);
 
 		DLLEXPORT float3 ComputeCurlNonBruteForce(Vector3 wsPos, Volume *pColliders, unsigned int length);
+
+		DLLEXPORT void SetCurlSettings(const CurlSettings& settings);
+
 	}
+#else
+	// API for visual effect system to use
+	Vector3 ComputeCurl(Vector3 wsPos, const Volume *pColliders, unsigned int length);
+	Vector3 ComputeCurlWithoutObstacles(Vector3 wsPos);
+	void SetCurlSettings(const CurlSettings& settings);
 #endif
+
 };

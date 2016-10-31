@@ -15,18 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IntelCurl.h">
+    <ClInclude Include="vmath.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IntelNoise.h">
+    <ClInclude Include="Curl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Noise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="IntelCurl.cpp">
+    <ClCompile Include="Curl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="IntelNoise.cpp">
+    <ClCompile Include="Noise.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
