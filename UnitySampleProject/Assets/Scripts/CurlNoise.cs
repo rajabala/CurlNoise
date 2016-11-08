@@ -15,18 +15,18 @@ public class CurlNoise : MonoBehaviour {
 	[Range(0f, 1f)]
 	public float strength = 1f;
 	
-	//public float frequency = 1f;
-	
-	//[Range(1, 8)]
-	//public int octaves = 1;
-	
-	//[Range(1f, 4f)]
-	//public float lacunarity = 2f;
-	
-	//[Range(0f, 1f)]
-	//public float persistence = 0.5f;
-	
-	private ParticleSystem system;
+	public float frequency = 5f;
+
+    [Range(1, 8)]
+    public int octaves = 1;
+
+    [Range(1f, 4f)]
+    public float lacunarity = 2f;
+
+    [Range(0f, 1f)]
+    public float persistence = 0.5f;
+
+    private ParticleSystem system;
 	private ParticleSystem.Particle[] particles;
 
     IntPtr pColliders;
@@ -109,7 +109,9 @@ public class CurlNoise : MonoBehaviour {
 		}
 		int particleCount = system.GetParticles(particles);
         
-        UpdateParticleVelocity();    
+        UpdateParticleVelocity();
+
+        NoisePluginWrapper.UpdateCurlSettings(false, frequency, octaves, lacunarity, persistence);
             
 		system.SetParticles(particles, particleCount);
     }
@@ -144,12 +146,13 @@ public class CurlNoise : MonoBehaviour {
             //        Debug.Log("particle " + i + " intersects sphere");
             //}
 
+            Vector3 v = new Vector3();
 
             if (m_CurlWithoutBoundaries)
             {
                 Profiler.BeginSample("CC-NoBoundaries");
                 Vector3 curl = NoisePluginWrapper.ComputeCurlA(position);
-                particles[i].velocity = strength * curl;
+                v = strength * curl;
                 Profiler.EndSample();
             }
             else
@@ -158,17 +161,20 @@ public class CurlNoise : MonoBehaviour {
                 if (m_BruteForce)
                 {
                     Vector3 curl = NoisePluginWrapper.ComputeCurlB(position, pColliders, numColliders);
-                    particles[i].velocity = strength * curl;
+                    v = strength * curl;
                 }
                 else
                 {
                     Vector3 curl = NoisePluginWrapper.ComputeCurlC(position, pColliders, numColliders);
-                    particles[i].velocity = strength * curl;
+                    v = strength * curl;
                     //particles[i].velocity = new Vector3(0f, 0.5f, 0f);
                 }
                 Profiler.EndSample();
             }
-            
+
+            particles[i].velocity = new Vector3(0f, 0.04f, 0f) + v;
+
+
         }
     }
   

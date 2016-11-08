@@ -280,9 +280,29 @@ namespace CurlNoise
 	//-------------------------------------------------------------------------------------------------------------
 	// PerlinNoise3 returns a scalar float given a 3D position in space. 
 	// To generate a potential force field, we need 3 values, so we use hardcoded offsets
-	inline NoiseSample noiseX(Vector3 p) { return PerlinNoise3::Noise(p); }
-	inline NoiseSample noiseY(Vector3 p) { return PerlinNoise3::Noise(p + Vector3(31.341f, -43.23f, 12.34f)); }
-	inline NoiseSample noiseZ(Vector3 p) { return PerlinNoise3::Noise(p + Vector3(-231.341f, 124.23f, -54.34f)); }
+	inline NoiseSample noiseX(Vector3 p) { 
+		return PerlinNoise3::Noise(	p, 
+									s_Settings.m_Frequency,
+									s_Settings.m_NumOctaves,
+									s_Settings.m_Lacunarity,
+									s_Settings.m_Persistence); 
+	}
+
+	inline NoiseSample noiseY(Vector3 p) {
+		return PerlinNoise3::Noise(	p + Vector3(31.341f, -43.23f, 12.34f),
+									s_Settings.m_Frequency,
+									s_Settings.m_NumOctaves,
+									s_Settings.m_Lacunarity,
+									s_Settings.m_Persistence);
+	}
+
+	inline NoiseSample noiseZ(Vector3 p) {
+		return PerlinNoise3::Noise(	p + Vector3(-231.341f, 124.23f, -54.34f),
+									s_Settings.m_Frequency,
+									s_Settings.m_NumOctaves,
+									s_Settings.m_Lacunarity,
+									s_Settings.m_Persistence);
+	}
 
 
 	//-------------------------------------------------------------------------------------------------------------
@@ -371,6 +391,20 @@ namespace CurlNoise
 	{
 		Vector3 curl = ComputeCurl(p, pColliders, length);		
 		return Vector3ToFloat3(curl);		
+	}
+
+
+	void SetCurlSettings(bool bCheapGradient,
+						float frequency,
+						unsigned int numOctaves,
+						float lacunarity,
+						float persistence)
+	{
+		s_Settings.m_bCheapGradient = bCheapGradient;
+		s_Settings.m_Frequency = frequency;
+		s_Settings.m_NumOctaves = numOctaves;
+		s_Settings.m_Lacunarity = lacunarity;
+		s_Settings.m_Persistence = persistence;
 	}
 #endif
 

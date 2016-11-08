@@ -31,10 +31,16 @@ public class NoisePluginWrapper : MonoBehaviour
     static Delegate fpCComputeCurlNoBoundaries;
     static Delegate fpBruteForceCurl;
     static Delegate fpNonBruteForceCurl;
+    static Delegate fpSetCurlSettings;
 
     delegate Vector3 ComputeCurlNoBoundaries(Vector3 wsPos);
     delegate Vector3 ComputeCurlBruteForce(Vector3 p, IntPtr colliders, Int32 length);
     delegate Vector3 ComputeCurlNonBruteForce(Vector3 p, IntPtr colliders, Int32 length);
+    delegate void SetCurlSettings(bool bCheapGradient,
+                                  float frequency,
+                                  UInt32 numOctaves,
+                                  float lacunarity,
+                                  float persistence);
 
     void Awake()
     {
@@ -58,6 +64,7 @@ public class NoisePluginWrapper : MonoBehaviour
         fpCComputeCurlNoBoundaries = Native.GetFuncPtr<Vector3, ComputeCurlNoBoundaries>(nativeLibraryPtr);
         fpBruteForceCurl = Native.GetFuncPtr<Vector3, ComputeCurlBruteForce>(nativeLibraryPtr);
         fpNonBruteForceCurl = Native.GetFuncPtr<Vector3, ComputeCurlNonBruteForce>(nativeLibraryPtr);
+        fpSetCurlSettings = Native.GetFuncPtr<SetCurlSettings>(nativeLibraryPtr);
     }
 
     // Curl evaluated over 3D noise. Obstacles not considered.
@@ -100,6 +107,21 @@ public class NoisePluginWrapper : MonoBehaviour
         {
             Debug.LogError("Couldnt get fn ptr");
             return Vector3.zero;
+        }
+    }
+
+
+    public static void UpdateCurlSettings(bool bCheapGradient,
+                                          float frequency,
+                                          int numOctaves,
+                                          float lacunarity,
+                                          float persistence)
+    {
+        if (fpSetCurlSettings != null)
+            Native.InvokeFast(fpSetCurlSettings, bCheapGradient, frequency, (UInt32) numOctaves, lacunarity, persistence);
+        else
+        {
+            Debug.LogError("Couldnt get fn ptr");
         }
     }
 

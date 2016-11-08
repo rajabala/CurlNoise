@@ -50,11 +50,23 @@ namespace CurlNoise
 
 	struct CurlSettings
 	{
-		bool			m_bCheapGradient = false;
+		// true => the gradient is calculated as vector from center of nearest collider to the particle
+		// false => the gradient is calculated based on the change of the distance field wrt xyz
+		bool			m_bCheapGradient = true; 
+		
+		//--- See PerlinNoise3::Noise for how the following fields are used ---
+
+		// base frequency to control how often the noise changes per world-space unit		
 		float			m_Frequency = 1.f;
-		unsigned int	m_NumOctaves = 1;
-		float			m_Lacunarity = 0.f;
-		float			m_Persistence = 0.f;		
+
+		// number of octaves to sum up. each successive octave scales the previous octave's frequency by the lacunarity
+		unsigned int	m_NumOctaves = 2;
+
+		// factor by which frequency changes in successive octaves
+		float			m_Lacunarity = 2.0f;
+
+		// factor by which amplitude changes in successive octaves
+		float			m_Persistence = 0.5f;		
 	};
 
 #if USING_UNITY
@@ -71,7 +83,11 @@ namespace CurlNoise
 
 		DLLEXPORT float3 ComputeCurlNonBruteForce(Vector3 wsPos, Volume *pColliders, unsigned int length);
 
-		DLLEXPORT void SetCurlSettings(const CurlSettings& settings);
+		DLLEXPORT void SetCurlSettings(	bool bCheapGradient, 
+										float frequency, 
+										unsigned int numOctaves, 
+										float lacunarity, 
+										float persistence);
 
 	}
 #else
