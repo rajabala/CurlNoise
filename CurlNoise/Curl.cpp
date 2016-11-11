@@ -457,7 +457,7 @@ namespace CurlNoise
 	float Volume::DistanceToSurface(const Vector3& p) const
 	{
 		float d = 0.f;
-		Vector4 osPos = m_WorldToObject * p; // xform to object space w/o scaling
+		Vector4 osPos = m_WorldToObject * Vector4(p, 1.0f); // xform to object space w/o scaling
 
 		switch (m_Shape)
 		{
