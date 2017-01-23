@@ -161,7 +161,7 @@ PerlinNoise3::EvaluateNoise(const Vector3& point, float frequency)
 //-----------------------------------------------------------------------------------------------
 // Wrapper that sums multiple octaves at noise; see decl for defaults
 NoiseSample 
-PerlinNoise3::Noise(Vector3 point, float frequency, int octaves, float lacunarity, float persistence)
+PerlinNoise3::Noise(const Vector3& point, float frequency, int octaves, float lacunarity, float persistence)
 {
 	NoiseSample sum = EvaluateNoise(point, frequency);
 	float amplitude = 1.0f;

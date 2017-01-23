@@ -26,21 +26,22 @@ public class NoisePluginWrapper : MonoBehaviour
     }
     #endregion
 
+    #region Function Imports
     static string dllName = "CurlNoise";
     static IntPtr nativeLibraryPtr;
-    static Delegate fpCComputeCurlNoBoundaries;
-    static Delegate fpBruteForceCurl;
+    static Delegate fpComputeCurlNoBoundaries;
+    static Delegate fpComputeCurl;
     static Delegate fpNonBruteForceCurl;
-    static Delegate fpSetCurlSettings;
+    static Delegate fpUpdateCurlSettings;
 
-    delegate Vector3 ComputeCurlNoBoundaries(Vector3 wsPos);
-    delegate Vector3 ComputeCurlBruteForce(Vector3 p, IntPtr colliders, Int32 length);
-    delegate Vector3 ComputeCurlNonBruteForce(Vector3 p, IntPtr colliders, Int32 length);
-    delegate void SetCurlSettings(bool bCheapGradient,
-                                  float frequency,
-                                  UInt32 numOctaves,
-                                  float lacunarity,
-                                  float persistence);
+    delegate Vector3 ComputeCurl_Unity(Vector3 p, IntPtr colliders, Int32 length);
+    delegate Vector3 ComputeCurlNoBoundaries_Unity(Vector3 wsPos);
+    delegate void    UpdateCurlSettings_Unity(  bool  bCheapGradient,
+                                                float latticeSpacing,
+                                                UInt32 numOctaves,
+                                                float lacunarity,
+                                                float persistence);
+    #endregion
 
     void Awake()
     {
@@ -61,17 +62,16 @@ public class NoisePluginWrapper : MonoBehaviour
 
     private static void GetFunctionPointersToExportedNativeMethods()
     {
-        fpCComputeCurlNoBoundaries = Native.GetFuncPtr<Vector3, ComputeCurlNoBoundaries>(nativeLibraryPtr);
-        fpBruteForceCurl = Native.GetFuncPtr<Vector3, ComputeCurlBruteForce>(nativeLibraryPtr);
-        fpNonBruteForceCurl = Native.GetFuncPtr<Vector3, ComputeCurlNonBruteForce>(nativeLibraryPtr);
-        fpSetCurlSettings = Native.GetFuncPtr<SetCurlSettings>(nativeLibraryPtr);
+        fpComputeCurlNoBoundaries = Native.GetFuncPtr<Vector3 /*return type*/, ComputeCurlNoBoundaries_Unity>(nativeLibraryPtr);
+        fpComputeCurl             = Native.GetFuncPtr<Vector3 /*return type*/, ComputeCurl_Unity>(nativeLibraryPtr);
+        fpUpdateCurlSettings      = Native.GetFuncPtr<UpdateCurlSettings_Unity>(nativeLibraryPtr);
     }
 
     // Curl evaluated over 3D noise. Obstacles not considered.
-    public static Vector3 ComputeCurlA(Vector3 p)
+    public static Vector3 ComputeCurlNB(Vector3 p)
     {
-        if (fpCComputeCurlNoBoundaries != null)
-            return Native.InvokeFast<Vector3>(fpCComputeCurlNoBoundaries, p);
+        if (fpComputeCurlNoBoundaries != null)
+            return Native.InvokeFast<Vector3>(fpComputeCurlNoBoundaries, p);
         else
         {
             Debug.LogError("Couldnt get fn ptr");
@@ -80,29 +80,11 @@ public class NoisePluginWrapper : MonoBehaviour
     }
 
 
-    // Curl evaluated over 3D noise and obstacles. The brute force approach calculates 
-    // a numerical derivative of the potential field even if obstacles don't affect the
-    // potential at the particle's position.
+    // Curl evaluated over 3D noise and obstacles.
     public static Vector3 ComputeCurlB(Vector3 p, IntPtr colliders, Int32 length)
     {
-        if (fpBruteForceCurl != null)
-            return Native.InvokeFast<Vector3>(fpBruteForceCurl, p, colliders, length);
-        else
-        {
-            Debug.LogError("Couldnt get fn ptr");
-            return Vector3.zero;
-        }
-    }
-
-
-    // Curl evaluated over 3D noise and obstacles. The non-brute force approach checks if there are 
-    // any obstacles that affect the potential field at 'p'. If not, it computes the curl using
-    // analytical derivatives of the field, which involves much lesser computation that numerical 
-    // derivatives
-    public static Vector3 ComputeCurlC(Vector3 p, IntPtr colliders, Int32 length)
-    {
-        if (fpBruteForceCurl != null)
-            return Native.InvokeFast<Vector3>(fpNonBruteForceCurl, p, colliders, length);
+        if (fpComputeCurl != null)
+            return Native.InvokeFast<Vector3>(fpComputeCurl, p, colliders, length);
         else
         {
             Debug.LogError("Couldnt get fn ptr");
@@ -112,13 +94,13 @@ public class NoisePluginWrapper : MonoBehaviour
 
 
     public static void UpdateCurlSettings(bool bCheapGradient,
-                                          float frequency,
+                                          float latticeSpacing,
                                           int numOctaves,
                                           float lacunarity,
                                           float persistence)
     {
-        if (fpSetCurlSettings != null)
-            Native.InvokeFast(fpSetCurlSettings, bCheapGradient, frequency, (UInt32) numOctaves, lacunarity, persistence);
+        if (fpUpdateCurlSettings != null)
+            Native.InvokeFast(fpUpdateCurlSettings, bCheapGradient, latticeSpacing, (UInt32)numOctaves, lacunarity, persistence);
         else
         {
             Debug.LogError("Couldnt get fn ptr");

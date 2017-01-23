@@ -14,12 +14,7 @@ namespace CurlNoise
 	using namespace Vectormath::Aos;
 
 	// This class encapsulates different volume collider primitives for the purpose of distance field estimation
-	// It does NOT handle irregular scaling for curved primitives (for ex, ellipsoids, ellipsoid cylinders..) at the moment.
-	// PORTME: IG Core already defines different Volume types. It seems to have a distance field function GetSignedDistancePoint(..)
-	//         It handles all the primitive shapes defined below, but approximates some of them 
-	//		   (for ex, box distance is Manhattan distance to the corner point)
-	//		   I'd guess that being tied to SceneObject, that would end up being shared with the vfx system.
-	//		   This is just a place holder for proof of concept and testing.	
+	// It does NOT handle irregular scaling for curved primitives (for ex, ellipsoids, ellipsoid cylinders..) at the moment.	
 	class Volume
 	{
 		enum eShape
@@ -50,23 +45,36 @@ namespace CurlNoise
 
 	struct CurlSettings
 	{
+    CurlSettings(unsigned int numOctaves, 
+                 float lacunarity, 
+                 float persistence, 
+                 float lattingSpacing, 
+                 bool cheapGradient = true)
+    {
+      m_bCheapGradient = cheapGradient;
+      m_LatticeSpacing = lattingSpacing;
+      m_NumOctaves     = numOctaves;
+      m_Lacunarity     = lacunarity;
+      m_Persistence    = persistence;
+    }
+
 		// true => the gradient is calculated as vector from center of nearest collider to the particle
 		// false => the gradient is calculated based on the change of the distance field wrt xyz
-		bool			m_bCheapGradient = true; 
+		bool			    m_bCheapGradient = true; 
 		
 		//--- See PerlinNoise3::Noise for how the following fields are used ---
-
-		// base frequency to control how often the noise changes per world-space unit		
-		float			m_Frequency = 1.f;
+		// Controls the spatial granularity at which noise gradients are assigned (in world space units)
+    // Larger the value, the more space is covered by the same trail
+		float					m_LatticeSpacing = 1.f; // 1 world unit
 
 		// number of octaves to sum up. each successive octave scales the previous octave's frequency by the lacunarity
 		unsigned int	m_NumOctaves = 2;
 
 		// factor by which frequency changes in successive octaves
-		float			m_Lacunarity = 2.0f;
+		float			    m_Lacunarity = 2.0f;
 
 		// factor by which amplitude changes in successive octaves
-		float			m_Persistence = 0.5f;		
+		float			    m_Persistence = 0.5f;		
 	};
 
 #if USING_UNITY
@@ -77,24 +85,21 @@ namespace CurlNoise
 			float val[3];		
 		};
 		
-		DLLEXPORT float3 ComputeCurlBruteForce(Vector3 wsPos, Volume *pColliders, unsigned int length);
+    DLLEXPORT float3 ComputeCurl_Unity(Vector3 wsPos, 
+                                       const Volume* const *pColliders, 
+                                       unsigned int length);
 
-		DLLEXPORT float3 ComputeCurlNoBoundaries(Vector3 wsPos);
+		DLLEXPORT float3 ComputeCurlNoBoundaries_Unity(Vector3 wsPos);
 
-		DLLEXPORT float3 ComputeCurlNonBruteForce(Vector3 wsPos, Volume *pColliders, unsigned int length);
-
-		DLLEXPORT void SetCurlSettings(	bool bCheapGradient, 
-										float frequency, 
-										unsigned int numOctaves, 
-										float lacunarity, 
-										float persistence);
-
+    DLLEXPORT void   UpdateCurlSettings_Unity(bool          bCheapGradient,
+                                              float	        latticeSpacing,
+                                              unsigned int	numOctaves,
+                                              float			    lacunarity,
+                                              float			    persistence);
 	}
 #else
 	// API for visual effect system to use
-	Vector3 ComputeCurl(Vector3 wsPos, const Volume *pColliders, unsigned int length);
-	Vector3 ComputeCurlWithoutObstacles(Vector3 wsPos);
-	void SetCurlSettings(const CurlSettings& settings);
+  Vector3 ComputeCurl(const CurlSettings& settings, Vector3 wsPos, const Volume* const *pColliders, unsigned int length); 
 #endif
 
 };

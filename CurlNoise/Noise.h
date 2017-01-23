@@ -77,19 +77,16 @@ namespace CurlNoise
 	struct PerlinNoise3
 	{
 	public:
-		static NoiseSample Noise(Vector3 point, 
-							 	 float frequency = 1.f, 
-								 int octaves = 1, 
-								 float lacunarity = 0.f, 
-								 float persistence = 0.f);
+		static NoiseSample Noise( const Vector3& point,
+							 	              float frequency, 
+								              int octaves, 
+								              float lacunarity, 
+								              float persistence);
 
-		//inline float operator()(float x, float y, float z) const;
-		//inline float operator()(const vmath::Vector3 &x) const { return (*this)(x[0], x[1], x[2]); }
+    static NoiseSample EvaluateNoise(const Vector3& point, float frequency);
 
 	protected:
-		static NoiseSample EvaluateNoise(const Vector3& point, float frequency);
-		
-		inline static float Dot(Vector3 g, float x, float y, float z) {
+		inline static float Dot(const Vector3& g, float x, float y, float z) {
 			return g.getX() * x + g.getY() * y + g.getZ() * z;
 		}
 
